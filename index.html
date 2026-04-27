@@ -27,12 +27,28 @@
         margin-top: 10px;
         font-size: 14px;
     }
+
+    select {
+        padding: 5px;
+        margin-top: 10px;
+    }
 </style>
 </head>
 
 <body>
 
 <h1>🏓 Ping Pong Game</h1>
+
+<!-- Difficulty Selector -->
+<div>
+    <label>Select Difficulty: </label>
+    <select id="difficulty" onchange="setDifficulty()">
+        <option value="easy">Easy</option>
+        <option value="medium" selected>Medium</option>
+        <option value="hard">Hard</option>
+    </select>
+</div>
+
 <canvas id="gameCanvas" width="800" height="400"></canvas>
 <div class="info">Use ↑ and ↓ keys to move your paddle</div>
 
@@ -42,7 +58,7 @@ const ctx = canvas.getContext("2d");
 
 // Paddle
 const paddleWidth = 10;
-const paddleHeight = 80;
+const paddleHeight = 100;
 
 // Player paddle
 let playerY = canvas.height / 2 - paddleHeight / 2;
@@ -58,9 +74,33 @@ let ballRadius = 8;
 let ballSpeedX = 5;
 let ballSpeedY = 4;
 
+// CPU speed
+let cpuSpeed = 0.1;
+
 // Score
 let playerScore = 0;
 let cpuScore = 0;
+
+// Difficulty function
+function setDifficulty() {
+    let level = document.getElementById("difficulty").value;
+
+    if (level === "easy") {
+        ballSpeedX = 3;
+        ballSpeedY = 2;
+        cpuSpeed = 0.05;
+    }
+    else if (level === "medium") {
+        ballSpeedX = 5;
+        ballSpeedY = 4;
+        cpuSpeed = 0.1;
+    }
+    else if (level === "hard") {
+        ballSpeedX = 7;
+        ballSpeedY = 6;
+        cpuSpeed = 0.18;
+    }
+}
 
 // Draw everything
 function draw() {
@@ -121,8 +161,12 @@ function update() {
         }
     }
 
-    // Simple AI for CPU
-    cpuY += ((ballY - (cpuY + paddleHeight / 2))) * 0.1;
+    // CPU AI movement
+    cpuY += ((ballY - (cpuY + paddleHeight / 2))) * cpuSpeed;
+
+    // Keep paddles inside canvas
+    playerY = Math.max(0, Math.min(canvas.height - paddleHeight, playerY));
+    cpuY = Math.max(0, Math.min(canvas.height - paddleHeight, cpuY));
 }
 
 // Reset ball
@@ -135,10 +179,10 @@ function resetBall() {
 // Controls
 document.addEventListener("keydown", function(e) {
     if (e.key === "ArrowUp") {
-        playerY -= 20;
+        playerY -= 30;
     }
     if (e.key === "ArrowDown") {
-        playerY += 20;
+        playerY += 30;
     }
 });
 
@@ -149,6 +193,10 @@ function gameLoop() {
     requestAnimationFrame(gameLoop);
 }
 
+// Initialize difficulty
+setDifficulty();
+
+// Start game
 gameLoop();
 </script>
 
