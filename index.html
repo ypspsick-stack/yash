@@ -12,20 +12,13 @@
         text-align: center;
     }
 
-    h1 {
-        margin: 10px;
-    }
+    h1 { margin: 10px; }
 
     canvas {
         background: black;
         display: block;
         margin: 20px auto;
         border: 3px solid white;
-    }
-
-    .info {
-        margin-top: 10px;
-        font-size: 14px;
     }
 
     select {
@@ -39,9 +32,8 @@
 
 <h1>🏓 Ping Pong Game</h1>
 
-<!-- Difficulty Selector -->
 <div>
-    <label>Select Difficulty: </label>
+    <label>Difficulty: </label>
     <select id="difficulty" onchange="setDifficulty()">
         <option value="easy">Easy</option>
         <option value="medium" selected>Medium</option>
@@ -50,7 +42,7 @@
 </div>
 
 <canvas id="gameCanvas" width="800" height="400"></canvas>
-<div class="info">Use ↑ and ↓ keys to move your paddle</div>
+<p>Hold ↑ and ↓ keys to move</p>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
@@ -60,89 +52,101 @@ const ctx = canvas.getContext("2d");
 const paddleWidth = 10;
 const paddleHeight = 100;
 
-// Player paddle
-let playerY = canvas.height / 2 - paddleHeight / 2;
-
-// Computer paddle
-let cpuY = canvas.height / 2 - paddleHeight / 2;
+// Player & CPU
+let playerY = canvas.height/2 - paddleHeight/2;
+let cpuY = canvas.height/2 - paddleHeight/2;
 
 // Ball
-let ballX = canvas.width / 2;
-let ballY = canvas.height / 2;
+let ballX = canvas.width/2;
+let ballY = canvas.height/2;
 let ballRadius = 8;
 
 let ballSpeedX = 5;
 let ballSpeedY = 4;
 
-// CPU speed
+// Difficulty variables
 let cpuSpeed = 0.1;
+let maxCpuMove = 6;
 
 // Score
 let playerScore = 0;
 let cpuScore = 0;
 
-// Difficulty function
+// Controls
+let upPressed = false;
+let downPressed = false;
+
+// Difficulty setup
 function setDifficulty() {
     let level = document.getElementById("difficulty").value;
 
+    let newX, newY;
+
     if (level === "easy") {
-        ballSpeedX = 3;
-        ballSpeedY = 2;
+        newX = 3; newY = 2;
         cpuSpeed = 0.05;
+        maxCpuMove = 4;
     }
     else if (level === "medium") {
-        ballSpeedX = 5;
-        ballSpeedY = 4;
+        newX = 5; newY = 4;
         cpuSpeed = 0.1;
+        maxCpuMove = 6;
     }
-    else if (level === "hard") {
-        ballSpeedX = 7;
-        ballSpeedY = 6;
+    else {
+        newX = 7; newY = 6;
         cpuSpeed = 0.18;
+        maxCpuMove = 8;
     }
+
+    // keep direction, change speed
+    ballSpeedX = Math.sign(ballSpeedX) * newX;
+    ballSpeedY = Math.sign(ballSpeedY) * newY;
 }
 
-// Draw everything
+// Draw
 function draw() {
-    // Background
     ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
     // Net
     ctx.fillStyle = "white";
-    for (let i = 0; i < canvas.height; i += 20) {
-        ctx.fillRect(canvas.width/2 - 1, i, 2, 10);
+    for (let i=0;i<canvas.height;i+=20) {
+        ctx.fillRect(canvas.width/2 -1,i,2,10);
     }
 
-    // Player paddle
+    // Paddles
     ctx.fillRect(0, playerY, paddleWidth, paddleHeight);
-
-    // CPU paddle
-    ctx.fillRect(canvas.width - paddleWidth, cpuY, paddleWidth, paddleHeight);
+    ctx.fillRect(canvas.width-paddleWidth, cpuY, paddleWidth, paddleHeight);
 
     // Ball
     ctx.beginPath();
-    ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
+    ctx.arc(ballX, ballY, ballRadius, 0, Math.PI*2);
     ctx.fill();
 
     // Score
     ctx.font = "20px Arial";
-    ctx.fillText(playerScore, canvas.width / 4, 30);
-    ctx.fillText(cpuScore, canvas.width * 3 / 4, 30);
+    ctx.fillText(playerScore, canvas.width/4, 30);
+    ctx.fillText(cpuScore, canvas.width*3/4, 30);
 }
 
-// Update game logic
+// Update
 function update() {
+
+    // Player movement
+    if (upPressed) playerY -= 6;
+    if (downPressed) playerY += 6;
+
+    // Ball movement
     ballX += ballSpeedX;
     ballY += ballSpeedY;
 
-    // Bounce top/bottom
-    if (ballY < 0 || ballY > canvas.height) {
+    // Top/bottom bounce (fixed)
+    if (ballY - ballRadius < 0 || ballY + ballRadius > canvas.height) {
         ballSpeedY = -ballSpeedY;
     }
 
     // Player collision
-    if (ballX < paddleWidth) {
+    if (ballX - ballRadius < paddleWidth) {
         if (ballY > playerY && ballY < playerY + paddleHeight) {
             ballSpeedX = -ballSpeedX;
         } else {
@@ -152,7 +156,7 @@ function update() {
     }
 
     // CPU collision
-    if (ballX > canvas.width - paddleWidth) {
+    if (ballX + ballRadius > canvas.width - paddleWidth) {
         if (ballY > cpuY && ballY < cpuY + paddleHeight) {
             ballSpeedX = -ballSpeedX;
         } else {
@@ -161,42 +165,53 @@ function update() {
         }
     }
 
-    // CPU AI movement
-    cpuY += ((ballY - (cpuY + paddleHeight / 2))) * cpuSpeed;
+    // CPU AI (limited movement)
+    let target = ballY - (cpuY + paddleHeight/2);
+    let move = Math.sign(target) * Math.min(Math.abs(target), maxCpuMove * cpuSpeed);
+    cpuY += move;
 
-    // Keep paddles inside canvas
+    // Keep inside
     playerY = Math.max(0, Math.min(canvas.height - paddleHeight, playerY));
     cpuY = Math.max(0, Math.min(canvas.height - paddleHeight, cpuY));
+
+    // Win condition
+    if (playerScore === 10) {
+        alert("You Win!");
+        location.reload();
+    }
+    if (cpuScore === 10) {
+        alert("CPU Wins!");
+        location.reload();
+    }
 }
 
 // Reset ball
 function resetBall() {
-    ballX = canvas.width / 2;
-    ballY = canvas.height / 2;
+    ballX = canvas.width/2;
+    ballY = canvas.height/2;
     ballSpeedX = -ballSpeedX;
 }
 
 // Controls
-document.addEventListener("keydown", function(e) {
-    if (e.key === "ArrowUp") {
-        playerY -= 30;
-    }
-    if (e.key === "ArrowDown") {
-        playerY += 30;
-    }
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp") upPressed = true;
+    if (e.key === "ArrowDown") downPressed = true;
 });
 
-// Game loop
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowUp") upPressed = false;
+    if (e.key === "ArrowDown") downPressed = false;
+});
+
+// Loop
 function gameLoop() {
     update();
     draw();
     requestAnimationFrame(gameLoop);
 }
 
-// Initialize difficulty
+// Start
 setDifficulty();
-
-// Start game
 gameLoop();
 </script>
 
