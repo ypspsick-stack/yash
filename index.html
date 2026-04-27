@@ -23,6 +23,20 @@ canvas {
     font-size: 24px;
     margin-top: 10px;
 }
+
+/* Restart Button */
+#restartBtn {
+    display: none;
+    margin-top: 20px;
+    padding: 12px 25px;
+    font-size: 18px;
+    background: cyan;
+    color: black;
+    border: none;
+    border-radius: 8px;
+    cursor: pointer;
+    box-shadow: 0 0 10px cyan;
+}
 </style>
 </head>
 
@@ -40,7 +54,9 @@ canvas {
 </div>
 
 <canvas id="gameCanvas"></canvas>
+
 <div id="message"></div>
+<button id="restartBtn" onclick="restartGame()">🔁 Restart Game</button>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
@@ -55,25 +71,26 @@ const paddleWidth = 10;
 const paddleHeight = 100;
 
 // Player & CPU
-let playerY = canvas.height/2 - paddleHeight/2;
-let cpuY = canvas.height/2 - paddleHeight/2;
+let playerY, cpuY;
 
 // Ball
 let ballX, ballY;
 let ballRadius = 8;
 let ballSpeedX, ballSpeedY;
 
-// Difficulty base values
+// Difficulty
 let baseSpeedX = 5;
 let baseSpeedY = 4;
 let cpuSpeed = 0.08;
 
 // Score
-let playerScore = 0;
-let cpuScore = 0;
+let playerScore, cpuScore;
 
 // Controls
 let up=false, down=false;
+
+// Game state
+let running = true;
 
 // Sound
 let bounceSound = new Audio("https://www.soundjay.com/button/beep-07.wav");
@@ -96,15 +113,30 @@ function setDifficulty() {
         cpuSpeed = 0.15;
     }
 
-    reset();
+    resetBall();
 }
 
-// Reset
-function reset() {
+// Reset ball
+function resetBall() {
     ballX = canvas.width/2;
     ballY = canvas.height/2;
     ballSpeedX = (Math.random()>0.5?1:-1)*baseSpeedX;
     ballSpeedY = baseSpeedY;
+}
+
+// Restart full game
+function restartGame() {
+    playerScore = 0;
+    cpuScore = 0;
+    playerY = canvas.height/2 - paddleHeight/2;
+    cpuY = canvas.height/2 - paddleHeight/2;
+
+    document.getElementById("message").innerText = "";
+    document.getElementById("restartBtn").style.display = "none";
+
+    running = true;
+    resetBall();
+    loop();
 }
 
 // Draw
@@ -136,7 +168,6 @@ function draw() {
 
 // Update
 function update() {
-
     if(up) playerY-=6;
     if(down) playerY+=6;
 
@@ -156,7 +187,7 @@ function update() {
             bounceSound.play();
         } else {
             cpuScore++;
-            reset();
+            resetBall();
         }
     }
 
@@ -167,7 +198,7 @@ function update() {
             bounceSound.play();
         } else {
             playerScore++;
-            reset();
+            resetBall();
         }
     }
 
@@ -178,19 +209,24 @@ function update() {
     ballSpeedX *= 1.0005;
     ballSpeedY *= 1.0005;
 
-    // Limits
+    // Boundaries
     playerY=Math.max(0,Math.min(canvas.height-paddleHeight,playerY));
     cpuY=Math.max(0,Math.min(canvas.height-paddleHeight,cpuY));
 
     // Win condition
     if(playerScore===5){
-        document.getElementById("message").innerText="🎉 You Win!";
-        running=false;
+        endGame("🎉 You Win!");
     }
     if(cpuScore===5){
-        document.getElementById("message").innerText="💀 You Lose!";
-        running=false;
+        endGame("💀 You Lose!");
     }
+}
+
+// End game
+function endGame(text){
+    document.getElementById("message").innerText = text;
+    document.getElementById("restartBtn").style.display = "inline-block";
+    running = false;
 }
 
 // Controls
@@ -214,7 +250,6 @@ canvas.addEventListener("touchend",()=>{
 });
 
 // Loop
-let running=true;
 function loop(){
     if(!running) return;
     update();
@@ -222,7 +257,12 @@ function loop(){
     requestAnimationFrame(loop);
 }
 
-// Start
+// Init
+playerScore = 0;
+cpuScore = 0;
+playerY = canvas.height/2 - paddleHeight/2;
+cpuY = canvas.height/2 - paddleHeight/2;
+
 setDifficulty();
 loop();
 </script>
