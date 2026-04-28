@@ -1,103 +1,142 @@
+# Ultimate Ping Pong Game (Play Button + High Score + Modes)
+
+```html
 <!DOCTYPE html>
 <html lang="en">
 <head>
 <meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Ultimate Ping Pong</title>
 <style>
 body {
     margin: 0;
     background: linear-gradient(135deg, #0f2027, #203a43, #2c5364);
     color: white;
-    font-family: Arial;
+    font-family: Arial, sans-serif;
     text-align: center;
+    overflow-x: hidden;
+}
+
+h1 {
+    margin-top: 15px;
 }
 
 canvas {
     display: block;
-    margin: auto;
+    margin: 20px auto;
     border: 3px solid white;
     box-shadow: 0 0 20px cyan;
+    background: rgba(0,0,0,0.35);
 }
 
-#message {
-    font-size: 24px;
+#menu, #gameOverScreen {
+    margin-top: 20px;
+}
+
+button, select {
+    padding: 12px 22px;
+    margin: 10px;
+    font-size: 18px;
+    border: none;
+    border-radius: 10px;
+}
+
+button {
+    cursor: pointer;
+    background: cyan;
+    color: black;
+    font-weight: bold;
+    box-shadow: 0 0 12px cyan;
+}
+
+button:hover {
+    transform: scale(1.05);
+}
+
+#restartBtn {
+    display: none;
+}
+
+.hidden {
+    display: none;
+}
+
+#scoreboard {
+    font-size: 22px;
     margin-top: 10px;
 }
 
-/* Restart Button */
-#restartBtn {
-    display: none;
-    margin-top: 20px;
-    padding: 12px 25px;
-    font-size: 18px;
-    background: cyan;
-    color: black;
-    border: none;
-    border-radius: 8px;
-    cursor: pointer;
-    box-shadow: 0 0 10px cyan;
+#highScoreDisplay {
+    margin-top: 10px;
+    font-size: 20px;
+    color: cyan;
+}
+
+#message {
+    font-size: 28px;
+    margin-top: 15px;
 }
 </style>
 </head>
-
 <body>
 
 <h1>🏓 Ultimate Ping Pong</h1>
 
-<div>
-    <label>Difficulty: </label>
-    <select id="difficulty" onchange="setDifficulty()">
+<div id="menu">
+    <label for="difficulty">Difficulty:</label>
+    <select id="difficulty">
         <option value="easy">Easy</option>
         <option value="medium" selected>Medium</option>
         <option value="hard">Hard</option>
     </select>
+    <br>
+    <button onclick="startGame()">▶ Play Game</button>
+    <div id="highScoreDisplay">🏆 High Score: <span id="highScore">0</span></div>
 </div>
 
-<canvas id="gameCanvas"></canvas>
+<canvas id="gameCanvas" class="hidden"></canvas>
+
+<div id="scoreboard" class="hidden">
+    Player: <span id="playerScore">0</span> | CPU: <span id="cpuScore">0</span>
+</div>
 
 <div id="message"></div>
-<button id="restartBtn" onclick="restartGame()">🔁 Restart Game</button>
+
+<div id="gameOverScreen" class="hidden">
+    <button id="restartBtn" onclick="restartGame()">🔁 Restart Game</button>
+</div>
 
 <script>
 const canvas = document.getElementById("gameCanvas");
 const ctx = canvas.getContext("2d");
 
-// Responsive
 canvas.width = window.innerWidth * 0.8;
 canvas.height = window.innerHeight * 0.6;
 
-// Paddle
-const paddleWidth = 10;
+const paddleWidth = 12;
 const paddleHeight = 100;
+const ballRadius = 8;
 
-// Player & CPU
 let playerY, cpuY;
-
-// Ball
 let ballX, ballY;
-let ballRadius = 8;
 let ballSpeedX, ballSpeedY;
-
-// Difficulty
 let baseSpeedX = 5;
 let baseSpeedY = 4;
 let cpuSpeed = 0.08;
 
-// Score
-let playerScore, cpuScore;
+let playerScore = 0;
+let cpuScore = 0;
+let highScore = localStorage.getItem("pongHighScore") || 0;
+document.getElementById("highScore").innerText = highScore;
 
-// Controls
-let up=false, down=false;
+let up = false;
+let down = false;
+let running = false;
 
-// Game state
-let running = true;
-
-// Sound
 let bounceSound = new Audio("https://www.soundjay.com/button/beep-07.wav");
 
-// Difficulty
 function setDifficulty() {
-    let level = document.getElementById("difficulty").value;
+    const level = document.getElementById("difficulty").value;
 
     if (level === "easy") {
         baseSpeedX = 3;
@@ -112,160 +151,178 @@ function setDifficulty() {
         baseSpeedY = 6;
         cpuSpeed = 0.15;
     }
-
-    resetBall();
 }
 
-// Reset ball
 function resetBall() {
-    ballX = canvas.width/2;
-    ballY = canvas.height/2;
-    ballSpeedX = (Math.random()>0.5?1:-1)*baseSpeedX;
-    ballSpeedY = baseSpeedY;
+    ballX = canvas.width / 2;
+    ballY = canvas.height / 2;
+    ballSpeedX = (Math.random() > 0.5 ? 1 : -1) * baseSpeedX;
+    ballSpeedY = (Math.random() > 0.5 ? 1 : -1) * baseSpeedY;
 }
 
-// Restart full game
-function restartGame() {
+function startGame() {
+    document.getElementById("menu").classList.add("hidden");
+    canvas.classList.remove("hidden");
+    document.getElementById("scoreboard").classList.remove("hidden");
+    document.getElementById("message").innerText = "";
+    document.getElementById("gameOverScreen").classList.add("hidden");
+
     playerScore = 0;
     cpuScore = 0;
-    playerY = canvas.height/2 - paddleHeight/2;
-    cpuY = canvas.height/2 - paddleHeight/2;
+    updateScore();
 
-    document.getElementById("message").innerText = "";
-    document.getElementById("restartBtn").style.display = "none";
+    playerY = canvas.height / 2 - paddleHeight / 2;
+    cpuY = canvas.height / 2 - paddleHeight / 2;
+
+    setDifficulty();
+    resetBall();
 
     running = true;
-    resetBall();
     loop();
 }
 
-// Draw
-function draw() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
+function restartGame() {
+    startGame();
+}
 
-    // Ball trail
-    ctx.fillStyle="rgba(0,255,255,0.3)";
+function updateScore() {
+    document.getElementById("playerScore").innerText = playerScore;
+    document.getElementById("cpuScore").innerText = cpuScore;
+}
+
+function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Center line
+    ctx.fillStyle = "rgba(255,255,255,0.3)";
+    for (let i = 0; i < canvas.height; i += 25) {
+        ctx.fillRect(canvas.width / 2 - 2, i, 4, 15);
+    }
+
+    // Ball glow trail
+    ctx.fillStyle = "rgba(0,255,255,0.3)";
     ctx.beginPath();
-    ctx.arc(ballX,ballY,ballRadius+4,0,Math.PI*2);
+    ctx.arc(ballX, ballY, ballRadius + 4, 0, Math.PI * 2);
     ctx.fill();
 
     // Ball
-    ctx.fillStyle="cyan";
+    ctx.fillStyle = "cyan";
     ctx.beginPath();
-    ctx.arc(ballX,ballY,ballRadius,0,Math.PI*2);
+    ctx.arc(ballX, ballY, ballRadius, 0, Math.PI * 2);
     ctx.fill();
 
-    // Paddles
-    ctx.fillStyle="white";
-    ctx.fillRect(0,playerY,paddleWidth,paddleHeight);
-    ctx.fillRect(canvas.width-paddleWidth,cpuY,paddleWidth,paddleHeight);
+    // Player paddle
+    ctx.fillStyle = "white";
+    ctx.fillRect(0, playerY, paddleWidth, paddleHeight);
 
-    // Score
-    ctx.font="20px Arial";
-    ctx.fillText(playerScore,canvas.width/4,30);
-    ctx.fillText(cpuScore,canvas.width*3/4,30);
+    // CPU paddle
+    ctx.fillRect(canvas.width - paddleWidth, cpuY, paddleWidth, paddleHeight);
 }
 
-// Update
 function update() {
-    if(up) playerY-=6;
-    if(down) playerY+=6;
+    if (up) playerY -= 7;
+    if (down) playerY += 7;
 
-    ballX+=ballSpeedX;
-    ballY+=ballSpeedY;
+    ballX += ballSpeedX;
+    ballY += ballSpeedY;
 
     // Wall bounce
-    if(ballY-ballRadius<0 || ballY+ballRadius>canvas.height){
-        ballSpeedY*=-1;
+    if (ballY - ballRadius < 0 || ballY + ballRadius > canvas.height) {
+        ballSpeedY *= -1;
+        bounceSound.currentTime = 0;
         bounceSound.play();
     }
 
-    // Player collision
-    if(ballX-ballRadius<paddleWidth){
-        if(ballY>playerY && ballY<playerY+paddleHeight){
-            ballSpeedX*=-1;
+    // Player paddle collision
+    if (ballX - ballRadius < paddleWidth) {
+        if (ballY > playerY && ballY < playerY + paddleHeight) {
+            ballSpeedX *= -1;
+            bounceSound.currentTime = 0;
             bounceSound.play();
         } else {
             cpuScore++;
+            updateScore();
             resetBall();
         }
     }
 
-    // CPU collision
-    if(ballX+ballRadius>canvas.width-paddleWidth){
-        if(ballY>cpuY && ballY<cpuY+paddleHeight){
-            ballSpeedX*=-1;
+    // CPU paddle collision
+    if (ballX + ballRadius > canvas.width - paddleWidth) {
+        if (ballY > cpuY && ballY < cpuY + paddleHeight) {
+            ballSpeedX *= -1;
+            bounceSound.currentTime = 0;
             bounceSound.play();
         } else {
             playerScore++;
+            updateScore();
             resetBall();
         }
     }
 
-    // AI
-    cpuY += (ballY-(cpuY+paddleHeight/2))*cpuSpeed;
+    // CPU AI
+    cpuY += (ballY - (cpuY + paddleHeight / 2)) * cpuSpeed;
 
-    // Speed increase
-    ballSpeedX *= 1.0005;
-    ballSpeedY *= 1.0005;
+    // Progressive speed increase
+    ballSpeedX *= 1.0007;
+    ballSpeedY *= 1.0007;
 
-    // Boundaries
-    playerY=Math.max(0,Math.min(canvas.height-paddleHeight,playerY));
-    cpuY=Math.max(0,Math.min(canvas.height-paddleHeight,cpuY));
+    // Boundary limits
+    playerY = Math.max(0, Math.min(canvas.height - paddleHeight, playerY));
+    cpuY = Math.max(0, Math.min(canvas.height - paddleHeight, cpuY));
 
-    // Win condition
-    if(playerScore===5){
-        endGame("🎉 You Win!");
-    }
-    if(cpuScore===5){
-        endGame("💀 You Lose!");
-    }
+    // Win/Lose
+    if (playerScore >= 5) endGame("🎉 You Win!");
+    if (cpuScore >= 5) endGame("💀 You Lose!");
 }
 
-// End game
-function endGame(text){
-    document.getElementById("message").innerText = text;
-    document.getElementById("restartBtn").style.display = "inline-block";
+function endGame(text) {
     running = false;
+    document.getElementById("message").innerText = text;
+    document.getElementById("gameOverScreen").classList.remove("hidden");
+
+    if (playerScore > highScore) {
+        highScore = playerScore;
+        localStorage.setItem("pongHighScore", highScore);
+        document.getElementById("highScore").innerText = highScore;
+    }
 }
 
-// Controls
-document.addEventListener("keydown",e=>{
-    if(e.key==="ArrowUp") up=true;
-    if(e.key==="ArrowDown") down=true;
-});
-document.addEventListener("keyup",e=>{
-    if(e.key==="ArrowUp") up=false;
-    if(e.key==="ArrowDown") down=false;
-});
-
-// Mobile
-canvas.addEventListener("touchstart",e=>{
-    let y=e.touches[0].clientY;
-    if(y<canvas.height/2) up=true;
-    else down=true;
-});
-canvas.addEventListener("touchend",()=>{
-    up=false; down=false;
-});
-
-// Loop
-function loop(){
-    if(!running) return;
+function loop() {
+    if (!running) return;
     update();
     draw();
     requestAnimationFrame(loop);
 }
 
-// Init
-playerScore = 0;
-cpuScore = 0;
-playerY = canvas.height/2 - paddleHeight/2;
-cpuY = canvas.height/2 - paddleHeight/2;
+// Keyboard controls
+document.addEventListener("keydown", e => {
+    if (e.key === "ArrowUp") up = true;
+    if (e.key === "ArrowDown") down = true;
+});
 
-setDifficulty();
-loop();
+document.addEventListener("keyup", e => {
+    if (e.key === "ArrowUp") up = false;
+    if (e.key === "ArrowDown") down = false;
+});
+
+// Mobile controls
+canvas.addEventListener("touchstart", e => {
+    const y = e.touches[0].clientY;
+    if (y < window.innerHeight / 2) up = true;
+    else down = true;
+});
+
+canvas.addEventListener("touchend", () => {
+    up = false;
+    down = false;
+});
+
+window.addEventListener("resize", () => {
+    canvas.width = window.innerWidth * 0.8;
+    canvas.height = window.innerHeight * 0.6;
+});
 </script>
 
 </body>
 </html>
+```
